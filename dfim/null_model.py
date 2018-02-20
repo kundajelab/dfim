@@ -138,7 +138,7 @@ def assign_empirical_pval(real_values, null_values, remove_zeros=True):
         pval = float(1+sum(float(val) <= np.array(null_values)))/(len(null_values)+1)
         return pval
 
-    pval_df = df.applymap(empirical_pvalue)
+    pval_df = real_values.applymap(empirical_pvalue)
     np.fill_diagonal(pval_df.values, 1)
 
     return pval_df
@@ -162,13 +162,13 @@ def assign_fit_pval(real_values, null_values, remove_zeros=True):
         pval = 1 - scipy.stats.norm.cdf(val, mu, std)
         return pval
 
-    pval_df = df.applymap(gaussian_pvalue)
+    pval_df = real_values.applymap(gaussian_pvalue)
     np.fill_diagonal(pval_df.values, 1)
 
     return pval_df
 
 def assign_pval(dfim_dict, null_dict, null_level='per_map',
-                null_type='empirical', diagonal_value = 0):
+                null_type='fit', diagonal_value = 0):
 
     '''
     Arguments:
@@ -185,7 +185,7 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
     pval_func = assign_empirical_pval if null_type == 'empirical' else assign_fit_pval
 
     NULL_LEVEL_OPTIONS = ['per_map', 'per_task', 'global']
-    NULL_TYPE_OPTIONS = ['empirical', 'fit_gaussian']
+    NULL_TYPE_OPTIONS = ['empirical', 'fit']
 
     assert null_level in NULL_LEVEL_OPTIONS
     assert null_type in NULL_TYPE_OPTIONS
