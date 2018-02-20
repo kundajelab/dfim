@@ -5,6 +5,7 @@
 import os, sys
 import pandas as pd
 import numpy as np
+import operator
 
 import deeplift
 from deeplift.conversion import keras_conversion as kc
@@ -40,11 +41,11 @@ def shuffle_seq_from_one_hot(sequences, dinuc=False):
     else:
         print('Using random shuffle')
         np.random.seed(1)
-        if sequences.shape == 3:
+        if len(sequences.shape) == 3:
             # Assume (Batch, SEQ_LEN, 4)
             SHUF_AXIS = 1
             shuf_sequences = sequences[:, np.random.permutation(sequences.shape[SHUF_AXIS]), :]
-        elif sequences.shape == 4:
+        elif len(sequences.shape) == 4:
             # Assume (Batch, 1, 4, SEQ_LEN)
             SHUF_AXIS = 3
             shuf_sequences = sequences[:, :, :, np.random.permutation(sequences.shape[SHUF_AXIS])]
@@ -56,14 +57,194 @@ def shuffle_seq_from_one_hot(sequences, dinuc=False):
     return shuf_sequences
 
 
-def generate_dfim_null_distribution(mut_loc_dict, deeplift_func,
-                                    sequences=None, seq_fastas=None,
-                                    dinuc=False, dl_task_idx=0):
-    # Generate shuffled sequences
-    if sequences is not None:
-        shuf_sequences = shuffle_seq_from_one_hot(sequences, dinuc=dinuc)
-    elif seq_fastas is not None:
-        shuf_sequences = shuffle_seq_from_fasta(seq_fastas, dinuc=dinuc)
+
+def flatten_nested_dict(score_dict):
+    """
+    Arguments:
+        score_dict: dictionary with keys as tasks 
+                    and leaves as numpy arrays of scores
+                    dimension (num seq, 4, seq length) OR
+                    (num seq, 1, 4, seq length)
+
+    Returns:
+        score_leaves: list of numpy arrays with scores
+    """
+    def find_leaf(score_dict):
+        for key, val in score_dict.iteritems():
+            key_history.append(key)
+            if isinstance(val, dict):
+                find_leaf(val)
+            else:
+                score_leaves.append(val)
+
+    score_leaves = []
+    key_history = []
+    find_leaf(score_dict)
+
+    return score_leaves
+
+
+# Get from dictionary from list
+def get_from_dict(data_dict, map_list):
+    return reduce(operator.getitem, map_list, data_dict)
+
+# Set value in dictionary from list
+def set_in_dict(data_dict, map_list, value):
+    get_from_dict(data_dict, map_list[:-1])[map_list[-1]] = value
+
+
+def restore_nested_dict(score_dict, scores_list): 
+    """
+    Arguments:
+        score_dict: dictionary with keys as tasks 
+                    (nested for Graph models)
+                    and leaves of data frames as scores_list
+        scores_list: single list of scores
+
+    Returns:
+        new_score_dict: dictionary in same shape as score_dict
+                        with scores_list instead of original content
+    """
+
+    key_tree = {}
+    new_score_dict = {}
+    scores_start = 0
+
+    def restore_leaf(score_dict, descend=0, key_tree=None, scores_start=scores_start):
+        for key, val in score_dict.iteritems():
+            if isinstance(val, dict):
+                if descend not in key_tree:
+                    key_tree[descend] = [key]
+                else:
+                    key_tree[descend].append(key)
+                current_key_tree = [key_tree[d][-1] for d in range(descend)
+                                   ] + [key] if descend > 0 else [key]
+                set_in_dict(new_score_dict, current_key_tree, {})
+                restore_leaf(val, descend = descend+1, key_tree = key_tree)
+            else:
+                final_key_tree = [key_tree[d][-1] for d in range(descend)] + [key]
+                set_in_dict(new_score_dict, final_key_tree, scores_list[scores_start])
+                scores_start += 1
+
+    restore_leaf(score_dict, key_tree=key_tree)
+
+    return new_score_dict
+
+def assign_empirical_pval(real_values, null_values, remove_zeros=True):
+    '''
+    remove zeros gets rid of diagonals
+    '''
+    def empirical_pvalue(val, null_values=null_values):
+        pval = float(1+sum(float(val) <= np.array(null_values)))/(len(null_values)+1)
+        return pval
+
+    pval_df = df.applymap(empirical_pvalue)
+    np.fill_diagonal(pval_df.values, 1)
+
+    return pval_df
+
+def assign_fit_pval(real_values, null_values, remove_zeros=True):
+    '''
+    remove zeros gets rid of diagonals
+    '''
+    import scipy
+
+    WARNING_NULL_SIZE = 100
+
+    if len(null_values) < WARNING_NULL_SIZE:
+        print("""WARNING, fitting null distribution 
+                 with less than {0} values""".format(WARNING_NULL_SIZE))
+
+    mu, std = scipy.stats.norm.fit(null_values)
+
+    def gaussian_pvalue(val, null_values=null_values):
+        # z_score = (mu - val) / std
+        pval = 1 - scipy.stats.norm.cdf(val, mu, std)
+        return pval
+
+    pval_df = df.applymap(gaussian_pvalue)
+    np.fill_diagonal(pval_df.values, 1)
+
+    return pval_df
+
+def assign_pval(dfim_dict, null_dict, null_level='per_map',
+                null_type='empirical', diagonal_value = 0):
+
+    '''
+    Arguments:
+        null_level - 
+            'per_map' - for long sequences when pvalues are assigned per map
+            'per_task' - extract scores and build a null for each task
+            'global' - extract all scores in entire dict
+
+    Returns:
+        dfim_pval_dict - dictionary same shape as dfim_dict except with p-values
+
+    '''
+
+    pval_func = assign_empirical_pval if null_type == 'empirical' else assign_fit_pval
+
+    NULL_LEVEL_OPTIONS = ['per_map', 'per_task', 'global']
+    NULL_TYPE_OPTIONS = ['empirical', 'fit_gaussian']
+
+    assert null_level in NULL_LEVEL_OPTIONS
+    assert null_type in NULL_TYPE_OPTIONS
+
+    dfim_pval_dict = {}
+
+    if null_level == 'per_map':
+
+        for task in dfim_dict.keys():
+
+            dfim_pval_dict[task] = {}
+
+            for seq in dfim_dict.keys():
+
+                flat_real_values = dfim_dict[task][seq].values().flatten()
+                flat_null_values = null_dict[task][seq].values().flatten()
+
+                flat_pvalues = pval_func(flat_real_values, flat_null_values)
+
+                flat_pvalues.reshape(dfim_dict[task][seq].shape)
+
+                dfim_pval_dict[task][seq] = flat_pvalues
+
+    elif null_level == 'per_task':
+
+        for task in dfim_dict.keys():
+
+            dfim_pval_dict[task] = {}
+
+            list_real_values = flatten_nested_dict(dfim_dict[task])
+            list_null_values = flatten_nested_dict(null_dict[task])
+
+            # Remove diagonal values
+            flat_null_values = [el for df in list_null_values 
+                                   for el in df.values.flatten() if el != diagonal_value]
+
+            list_pvalues = [pval_func(df, flat_null_values) for df in list_real_values]
+
+            pvalue_dict = restore_nested_dict(dfim_dict[task], list_pvalues)
+
+            dfim_pval_dict[task] = pvalue_dict
+
+    elif null_level == 'global':
+
+        list_real_values = flatten_nested_dict(dfim_dict)
+        list_null_values = flatten_nested_dict(null_dict)
+
+        flat_null_values = [el for df in list_null_values 
+                               for el in df.values.flatten() if el != diagonal_value]
+
+        list_pvalues = [pval_func(df, flat_null_values) for df in list_real_values]
+
+        pvalue_dict = restore_nested_dict(dfim_dict, list_pvalues)
+
+        dfim_pval_dict = pvalue_dict
+
     else:
-        raise ValueError('Must provide either --sequences or --seq_fastas')
+        raise ValueError('Please provide null level in {0}'.format(NULL_LEVEL_OPTIONS))
+
+    return dfim_pval_dict
+
 

@@ -8,6 +8,11 @@ import pandas as pd
 import numpy as np
 import copy
 
+import deeplift
+from deeplift.conversion import keras_conversion as kc
+
+BASES = ['A','C','G','T']
+
 def get_orig_letter(one_hot_vec):
     assert(len(np.where(one_hot_vec!=0)[0]) == 1)
     if one_hot_vec[0] != 0:
