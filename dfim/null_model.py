@@ -57,14 +57,11 @@ def shuffle_seq_from_one_hot(sequences, dinuc=False):
     return shuf_sequences
 
 
-
 def flatten_nested_dict(score_dict):
     """
     Arguments:
         score_dict: dictionary with keys as tasks 
-                    and leaves as numpy arrays of scores
-                    dimension (num seq, 4, seq length) OR
-                    (num seq, 1, 4, seq length)
+                    and leaves data_frames
 
     Returns:
         score_leaves: list of numpy arrays with scores
@@ -176,6 +173,8 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
             'per_map' - for long sequences when pvalues are assigned per map
             'per_task' - extract scores and build a null for each task
             'global' - extract all scores in entire dict
+        diagonal_value 
+            value that DFIM diagonal contains that is meaningless and should be removed
 
     Returns:
         dfim_pval_dict - dictionary same shape as dfim_dict except with p-values
@@ -218,7 +217,6 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
             list_real_values = flatten_nested_dict(dfim_dict[task])
             list_null_values = flatten_nested_dict(null_dict[task])
 
-            # Remove diagonal values
             flat_null_values = [el for df in list_null_values 
                                    for el in df.values.flatten() if el != diagonal_value]
 
