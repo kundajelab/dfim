@@ -191,7 +191,8 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
 def compute_dfim(delta_dict, sequence_index, tasks,
                  operations=[np.sum, np.max], operation_axes=[1, 0],
                  absolute_value=True,
-                 annotate=False, mutated_seq_key=None):
+                 annotate=False, mutated_seq_key=None,
+                 diagonal_value=-1):
     """
     operations - MOTIFS: first take sum over all letters, then take mean over positions (FOR MOTIFS)
                - INDIVIDUAL BASES: max over base position
@@ -200,7 +201,6 @@ def compute_dfim(delta_dict, sequence_index, tasks,
                True will capture the name
 
     """
-
     assert len(operations) == len(operation_axes)
 
     dfim_dict = {}
@@ -218,7 +218,7 @@ def compute_dfim(delta_dict, sequence_index, tasks,
             # Allocate data frame with all mutant names and response names
             dfim_df = pd.DataFrame(index=all_mut_pos,
                                    columns=all_resp_pos,
-                                   data=0)
+                                   data=diagonal_value)
 
             # Extract all the differential profiles
             for m in delta_dict[task][seq].keys():

@@ -127,9 +127,11 @@ def restore_nested_dict(score_dict, scores_list):
 
     return new_score_dict
 
-def assign_empirical_pval(real_values, null_values, remove_zeros=True):
+def assign_empirical_pval(real_values, null_values):
     '''
-    remove zeros gets rid of diagonals
+    Arguments:
+        - real_values
+        - null_values
     '''
     def empirical_pvalue(val, null_values=null_values):
         pval = float(1+sum(float(val) <= np.array(null_values)))/(len(null_values)+1)
@@ -140,9 +142,11 @@ def assign_empirical_pval(real_values, null_values, remove_zeros=True):
 
     return pval_df
 
-def assign_fit_pval(real_values, null_values, remove_zeros=True):
+def assign_fit_pval(real_values, null_values):
     '''
-    remove zeros gets rid of diagonals
+    Arguments:
+        - real_values
+        - null_values
     '''
     import scipy
 
@@ -159,13 +163,21 @@ def assign_fit_pval(real_values, null_values, remove_zeros=True):
         pval = 1 - scipy.stats.norm.cdf(val, mu, std)
         return pval
 
-    pval_df = real_values.applymap(gaussian_pvalue)
-    np.fill_diagonal(pval_df.values, 1)
+    if hasattr(real_values, 'applymap'):
 
-    return pval_df
+        pval_df = real_values.applymap(gaussian_pvalue)
+        np.fill_diagonal(pval_df.values, 1)
+        return pval_df
+
+    else:
+
+        pval_list = [gaussian_pvalue(el) for el in real_values]
+        return pval_list
+
 
 def assign_pval(dfim_dict, null_dict, null_level='per_map',
-                null_type='fit', diagonal_value = 0):
+                null_type='fit', diagonal_value = -1,
+                qq_plot=False):
 
     '''
     Arguments:
@@ -243,6 +255,39 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
     else:
         raise ValueError('Please provide null level in {0}'.format(NULL_LEVEL_OPTIONS))
 
+    if qq_plot:
+
+        try: 
+            flat_real_values
+        except:
+            flat_real_values = [el for df in list_real_values 
+                                   for el in df.values.flatten() if el != diagonal_value]
+
+        flat_real_pvals = pval_func(flat_real_values, flat_null_values)
+        flat_null_pvals = pval_func(flat_null_values, flat_null_values)
+
+        qq_plot(flat_real_pvals, flat_null_pvals, 
+                plot_file='/users/pgreens/temp/dfim_qq_plot.png')
+
     return dfim_pval_dict
 
+def qq_plot(flat_real_pvals, flat_null_pvals, plot_file=None):
 
+    log_null_vec = [-1*np.log(val + .001) for val in flat_null_pvals]
+    log_pval_vec = [-1*np.log(val + .001) for val in flat_real_pvals]
+
+    sort_log_null_vec = sorted(log_null_vec)
+    sort_log_pval_vec = sorted(log_pval_vec)
+
+    plt.figure(figsize=(6,6))
+    plt.plot(sort_log_null_vec, sort_log_pval_vec, 'o')
+    plt.xlabel('Null -log(pval)')
+    plt.ylabel('True -log(pval)')
+
+    if plot_file is None:
+        print("No plot file provided, writing to current directory")
+        plot_file = 'dfim_qq_plot.png'
+    plt.savefig(plot_file)
+
+
+def qq_plot()
