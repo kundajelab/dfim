@@ -289,5 +289,3 @@ def qq_plot(flat_real_pvals, flat_null_pvals, plot_file=None):
         plot_file = 'dfim_qq_plot.png'
     plt.savefig(plot_file)
 
-
-def qq_plot()

@@ -1,3 +1,4 @@
 **/*.pyc
 **/._***/._***/._***/._***/._***/._***/._***/._*
 *.egg-info
+*examples/.ipynb_checkpoints/*

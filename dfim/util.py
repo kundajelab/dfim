@@ -2,7 +2,10 @@
 ### Peyton Greenside
 ### Kundaje Lab, Stanford University
 
-import numpy as np;
+import os, sys
+import numpy as np
+import pandas as pd
+
 
 def one_hot_encode(sequence):
 
@@ -23,9 +26,9 @@ def one_hot_encode(sequence):
         else:
             raise RuntimeError("Unsupported character: "+str(char));
 
-        one_hot_array[char_pos, pos] = 1
+        one_hot_array[pos, char_pos] = 1
 
-        return one_hot_array
+    return one_hot_array
 
 
 
@@ -59,16 +62,16 @@ def get_correct_predictions(true_labels, predicted_labels,
     If neg_threshold is not None (is supplied, i.e. 0.5), will also 
     return indices for negative correctly predicted examples
     """
-    correct_pos_predictions = []
+    correct_predictions = []
 
     for i in xrange(len(true_labels)):
         if true_labels[i] == 1 and predicted_labels[i] > pos_threshold:
-                correct_pos_predictions.append(i)
+            correct_predictions.append(i)
         if neg_threshold is not None:
             if true_labels[i] == 0 and predicted_labels[i] < neg_threshold:
                 correct_predictions.append(i)
 
-    return correct_pos_predictions
+    return correct_predictions
 
 def process_locations_from_simdata(sequences, simdata_file):
     """ 
@@ -119,3 +122,6 @@ def process_locations_from_simdata(sequences, simdata_file):
             seqlet_loc_dict[return_key] = return_dict
 
     return seqlet_loc_dict
+
+def plot_delta_tracks():
+    pass
