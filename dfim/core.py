@@ -53,11 +53,12 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
 
     mutated_seq_list = []
     ind = 0
-    if per_base_map:
 
-        mut_sizes = [mut_loc_dict[name]['mut_end'] - mut_loc_dict[name]['mut_start']
-                            for name in mut_loc_dict.keys() 
-                            if mut_loc_dict[name]['seq'] in sequence_index]
+    mut_sizes = [mut_loc_dict[name]['mut_end'] - mut_loc_dict[name]['mut_start']
+                        for name in mut_loc_dict.keys() 
+                        if mut_loc_dict[name]['seq'] in sequence_index]
+
+    if per_base_map:
 
         if np.max(mut_sizes) > 1:
             print('''Detected mutations of max size {0}, '''
@@ -135,7 +136,7 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mut_index = get_letter_index(mut_letter)
                             mutated_seq[current_mut_start, :] = 0
                             mutated_seq[current_mut_start, mut_index] = 1
-                            mutated_seq_list.append(sequences[seq])
+                            mutated_seq_list.append(mutated_seq)
                             label = 'seq_{0}_{1}to{2}_at{3}'.format(
                                             str(seq), orig_letter, 
                                             mut_letter, str(current_mut_start))
@@ -476,6 +477,8 @@ def capture_strong_interactions(dfim_dict, delta_dict,
     """
     Can automate detection of what a strong threshold would be
     thresholds are applied per task
+    set score_thresh=None and top_pct=None to capture all sequences
+
     """
 
     capture_dict = {}
@@ -499,7 +502,8 @@ def capture_strong_interactions(dfim_dict, delta_dict,
 
         elif score_thresh is not None:
 
-            raise ValueError('Must provide --score_thresh or --top_pct')
+            print('--score_thresh and --top_pct not provided, taking all sequences')
+            score_thresh = np.min(all_scores)
 
         for seq in delta_dict[task].keys():
             capture_dict[task][seq] = {}
@@ -521,8 +525,7 @@ def capture_strong_interactions(dfim_dict, delta_dict,
         pickle.dump(capture_dict, open(pickle_file, 'w'))
         print("Dumped capture_dict to %s"%pickle_file)
 
-    else:
 
-        return capture_dict
+    return capture_dict
 
 
