@@ -231,10 +231,16 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 resp_names = mut_loc_dict[m]['resp_names']
                 mut_ind = mutated_seq_key.loc[mut_i, 'array_ind']
                 mut_start = mutated_seq_key.loc[mut_i, 'mut_start']
+                mut_end = mutated_seq_key.loc[mut_i, 'mut_end']
                 for r in range(len(resp_starts)):
                     response_mut_profile = score_dict[task][mut_ind][resp_starts[r]:resp_ends[r], :]
                     orig_profile = score_dict[task][orig_ind][resp_starts[r]:resp_ends[r], :]
+                    # Set orig profile to zero at mutation (for motifs this means delta will be 0, 
+                    # for bases it means differential will be magnitude of mutant)
+                    # orig_profile[mut_start:mut_end, :] = 0
                     delta_profile = orig_profile - response_mut_profile
+                    # Set delta profile to 0 at mutation
+                    delta_profile[mut_start:mut_end, :] = 0
                     if mutated_seq_preds is not None:
                         pred_diff = (mutated_seq_preds[orig_ind] - mutated_seq_preds[mut_ind])[0]
                     else:
