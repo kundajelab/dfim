@@ -121,12 +121,12 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
 
                 elif per_base_map and mut_end - mut_start > 1 :
 
-                    raise ValueError('Currently may not ask for a --per_base_map with mutation size > 1')
+                    # raise ValueError('Currently may not ask for a --per_base_map with mutation size > 1')
                     ### Issue here is that basically need to re-write  mutant_loc_dict
                     ### Because otherwise all the different mutations have the same "name" m
                     for current_mut_start in range(mut_start, mut_end):
                         # In this case need new names because otherwise they overwrite
-                        new_m = '{0}_base{1}'.format(m, current_mut_start)
+                        # new_m = '{0}_base{1}'.format(m, current_mut_start)
                         # Iterate through each base from mut_start to mut_end
                         orig_letter  = get_orig_letter(sequences[seq][current_mut_start, :])
                         seq_mutants = [el for el in mutants if el != orig_letter]
@@ -136,11 +136,11 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mutated_seq[current_mut_start, :] = 0
                             mutated_seq[current_mut_start, mut_index] = 1
                             mutated_seq_list.append(sequences[seq])
-                            label = '{0};seq_{1}_{2}to{3}_at{4}'.format(
-                                            new_m, str(seq), orig_letter, 
+                            label = 'seq_{0}_{1}to{2}_at{3}'.format(
+                                            str(seq), orig_letter, 
                                             mut_letter, str(current_mut_start))
                             mutated_seq_key.iloc[ind, :]={'array_ind':ind, 'seq': seq, 'label': label, 
-                                                          'mut_key': new_m, 'mut_start': current_mut_start,
+                                                          'mut_key': m, 'mut_start': current_mut_start,
                                                           'orig_letter': orig_letter, 
                                                           'mut_letter': mut_letter}
                             ind += 1
@@ -226,6 +226,7 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 delta_dict[task][seq][m_label] = {}
                 resp_starts = mut_loc_dict[m]['resp_start']
                 resp_ends = mut_loc_dict[m]['resp_end']
+                mut_name = mut_loc_dict[m]['mut_name']
                 resp_names = mut_loc_dict[m]['resp_names']
                 mut_ind = mutated_seq_key.loc[mut_i, 'array_ind']
                 mut_start = mutated_seq_key.loc[mut_i, 'mut_start']
@@ -249,7 +250,8 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                                                                  'resp_start': resp_starts[r],
                                                                  'resp_end': resp_ends[r],
                                                                  'mut_key': m,
-                                                        }                        
+                                                                 'mut_name': mut_name,
+                                                                 }                        
                     elif capture_seqs_max_thresh is not None and abs(delta_profile).max() > capture_seqs_max_thresh:
                         print('Max score exceeded threshold, adding sequence')
                         delta_dict[task][seq][m_label][r_key] = {'orig_profile': orig_profile,
@@ -260,7 +262,8 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                                                                  'resp_start': resp_starts[r],
                                                                  'resp_end': resp_ends[r],
                                                                  'mut_key': m,
-                                                        }
+                                                                 'mut_name': mut_name,
+                                                                 }
                     else:
                         continue
 
