@@ -235,9 +235,6 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 for r in range(len(resp_starts)):
                     response_mut_profile = score_dict[task][mut_ind][resp_starts[r]:resp_ends[r], :]
                     orig_profile = score_dict[task][orig_ind][resp_starts[r]:resp_ends[r], :]
-                    # Set orig profile to zero at mutation (for motifs this means delta will be 0, 
-                    # for bases it means differential will be magnitude of mutant)
-                    # orig_profile[mut_start:mut_end, :] = 0
                     delta_profile = orig_profile - response_mut_profile
                     # Set delta profile to 0 at mutation
                     delta_profile[mut_start:mut_end, :] = 0
