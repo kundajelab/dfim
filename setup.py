@@ -12,7 +12,7 @@ def main():
 
         install_requires = [ 'scipy', 'numpy>=1.11', 'pandas', 'deeplift',],
 
-        extra_requires=['matplotlib'],
+        extra_requires=['matplotlib', 'h5py', 'biopython'],
 
         packages= ['dfim'],
 
