@@ -7,6 +7,8 @@
 import pandas as pd
 import numpy as np
 import copy
+import scipy
+import cPickle as pickle
 
 import deeplift
 from deeplift.conversion import keras_conversion as kc
@@ -107,10 +109,10 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mut_index = get_letter_index(mut_letter)
                             mutated_seq[mut_start, :] = 0
                             mutated_seq[mut_start, mut_index] = 1
-                            mutated_seq_list.append(sequences[seq])
-                            label = 'mut;{0};seq_{1}_{2}to{3}_at{4}'.format(
-                                                m, str(seq), orig_letter, 
-                                                mut_letter, str(mut_start))
+                            mutated_seq_list.append(mutated_seq)
+                            label = 'seq_{0}_{1}to{2}_at{3}'.format(
+                                            str(seq), orig_letter, 
+                                            mut_letter, str(mut_start))
                             mutated_seq_key.iloc[ind, :]={'array_ind':ind, 'seq': seq, 'label': label, 
                                                           'mut_key': m, 'mut_start': mut_start,
                                                           'orig_letter': orig_letter, 
@@ -134,9 +136,9 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mutated_seq[current_mut_start, :] = 0
                             mutated_seq[current_mut_start, mut_index] = 1
                             mutated_seq_list.append(sequences[seq])
-                            label = 'mut;{0};seq_{1}_{2}to{3}_at{4}'.format(
-                                                new_m, str(seq), orig_letter, 
-                                                mut_letter, str(current_mut_start))
+                            label = '{0};seq_{1}_{2}to{3}_at{4}'.format(
+                                            new_m, str(seq), orig_letter, 
+                                            mut_letter, str(current_mut_start))
                             mutated_seq_key.iloc[ind, :]={'array_ind':ind, 'seq': seq, 'label': label, 
                                                           'mut_key': new_m, 'mut_start': current_mut_start,
                                                           'orig_letter': orig_letter, 
@@ -149,8 +151,8 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                     mutated_seq = copy.deepcopy(sequences[seq])
                     mutated_seq[mut_start:mut_end, :] = 0 
                     mutated_seq_list.append(mutated_seq)
-                    label = 'mut;' + m + ';' + 'seq_'+ str(seq) + '_' + 'loc{0}-{1}'.format(
-                                                                str(mut_start), str(mut_end))
+                    label = m + ';' + 'seq_'+ str(seq) + '_' + 'loc{0}-{1}'.format(
+                                                            str(mut_start), str(mut_end))
                     mutated_seq_key.iloc[ind, :] = {'array_ind':ind, 'seq': seq, 'label': label,
                                                    'mut_key': m, 'mut_start': mut_start}
                     ind += 1
@@ -230,33 +232,34 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 for r in range(len(resp_starts)):
                     response_mut_profile = score_dict[task][mut_ind][resp_starts[r]:resp_ends[r], :]
                     orig_profile = score_dict[task][orig_ind][resp_starts[r]:resp_ends[r], :]
-                    ddl_profile = orig_profile - response_mut_profile
+                    delta_profile = orig_profile - response_mut_profile
                     if mutated_seq_preds is not None:
                         pred_diff = (mutated_seq_preds[orig_ind] - mutated_seq_preds[mut_ind])[0]
                     else:
                         pred_diff = None
-                    r_key = 'mut_{0};response_{1}_at_{2}'.format(m, resp_names[r], str(resp_starts[r]))
+                    r_key = 'resp_{0}_{1}to{2}'.format(resp_names[r], str(resp_starts[r]), str(resp_ends[r]))
+                    # r_key = 'mut_{0};response_{1}_at_{2}'.format(m, resp_names[r], str(resp_starts[r]))
                     ### Combine code below
                     if capture_seqs_max_thresh is None:
                         delta_dict[task][seq][m_label][r_key] = {'orig_profile': orig_profile,
-                                                                'mut_profile': response_mut_profile,
-                                                                'ddl_profile': ddl_profile,
-                                                                'prediction_diff': pred_diff,
-                                                                'mut_start': mut_start,
-                                                                'resp_start': resp_starts[r],
-                                                                'resp_end': resp_ends[r],
-                                                                'mut_key': m,
+                                                                 'mut_profile': response_mut_profile,
+                                                                 'delta_profile': delta_profile,
+                                                                 'prediction_diff': pred_diff,
+                                                                 'mut_start': mut_start,
+                                                                 'resp_start': resp_starts[r],
+                                                                 'resp_end': resp_ends[r],
+                                                                 'mut_key': m,
                                                         }                        
-                    elif capture_seqs_max_thresh is not None and abs(ddl_profile).max() > capture_seqs_max_thresh:
+                    elif capture_seqs_max_thresh is not None and abs(delta_profile).max() > capture_seqs_max_thresh:
                         print('Max score exceeded threshold, adding sequence')
                         delta_dict[task][seq][m_label][r_key] = {'orig_profile': orig_profile,
-                                                                'mut_profile': response_mut_profile,
-                                                                'ddl_profile': ddl_profile,
-                                                                'prediction_diff': pred_diff,
-                                                                'mut_start': mut_start,
-                                                                'resp_start': resp_starts[r],
-                                                                'resp_end': resp_ends[r],
-                                                                'mut_key': m,
+                                                                 'mut_profile': response_mut_profile,
+                                                                 'delta_profile': delta_profile,
+                                                                 'prediction_diff': pred_diff,
+                                                                 'mut_start': mut_start,
+                                                                 'resp_start': resp_starts[r],
+                                                                 'resp_end': resp_ends[r],
+                                                                 'mut_key': m,
                                                         }
                     else:
                         continue
@@ -279,11 +282,11 @@ def dfim_per_element(delta_dict, task, seq, all_mut_pos,
         for r in delta_dict[task][seq][m].keys():
 
             if absolute_value:
-                ddl_profile = abs(delta_dict[task][seq][m][r]['ddl_profile'])
+                delta_profile = abs(delta_dict[task][seq][m][r]['delta_profile'])
             else:
-                ddl_profile = delta_dict[task][seq][m][r]['ddl_profile']
+                delta_profile = delta_dict[task][seq][m][r]['delta_profile']
 
-            i_score = ddl_profile
+            i_score = delta_profile
 
             for o in range(len(operations)):
 
@@ -306,7 +309,6 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
     # Need every response to be the same length 
     # Currently don't use operations
 
-    print 'size of index {0}'.format(len(dfim_key.index))
     mut_starts = dfim_key.mut_start.unique().tolist()
 
     dfim_array = np.zeros((len(mut_starts), 4, 4, resp_size, 4))
@@ -324,11 +326,23 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
             print("Unsure how to deal with multiple response locations for per-base-map")
 
         if absolute_value:
-            ddl_profile = abs(delta_dict[task][seq][label][r]['ddl_profile'])
+            delta_profile = abs(delta_dict[task][seq][label][r]['delta_profile'])
         else:
-            ddl_profile = delta_dict[task][seq][label][r]['ddl_profile']
+            delta_profile = delta_dict[task][seq][label][r]['delta_profile']
 
-        dfim_array[start_ind, orig_letter_ind, mut_letter_ind, :, :] = ddl_profile
+        dfim_array[start_ind, orig_letter_ind, mut_letter_ind, :, :] = delta_profile
+
+
+    if operations is not None:
+
+        assert len(operation_axes) == len(operations)
+
+        for o in range(len(operations)):
+
+            # Perform operations
+            dfim_array = np.apply_along_axis(operations[o],
+                                             operation_axes[o],
+                                             dfim_array)
 
     return dfim_array
 
@@ -386,7 +400,7 @@ def compute_dfim(delta_dict, sequence_index, tasks,
      
                     if len(np.unique(resp_sizes)) == 1:
 
-                        print('Detected response elements of same size %s, making DFIM'%resp_sizes[0])
+                        # print('Detected response elements of same size %s, making DFIM'%resp_sizes[0])
 
                         dfim_array =  dfim_per_base(dfim_key=mutated_seq_key[mutated_seq_key.mut_key == mkey], 
                                                     resp_size=np.unique(resp_sizes)[0], 
@@ -451,11 +465,61 @@ def compute_dfim(delta_dict, sequence_index, tasks,
 
 
 
+def capture_strong_interactions(dfim_dict, delta_dict, 
+                                score_thresh=0.01,
+                                top_pct=None,
+                                pickle_file=None):
 
+    """
+    Can automate detection of what a strong threshold would be
+    thresholds are applied per task
+    """
 
+    capture_dict = {}
 
+    for task in delta_dict.keys():
+        capture_dict[task] = {}
 
+        if top_pct is not None:
 
+            # Get distribution of maximal interaction scores
+            if top_pct < 1:
+                top_pct = top_pct * 100
 
+            all_scores = [abs(delta_dict[t][s][m][r]['delta_profile']).max()
+                                for t in delta_dict.keys()
+                                for s in delta_dict[t].keys()
+                                for m in delta_dict[t][s].keys()
+                                for r in delta_dict[t][s][m].keys()]
+
+            score_thresh = scipy.stats.scoreatpercentile(all_scores, top_pct)
+
+        elif score_thresh is not None:
+
+            raise ValueError('Must provide --score_thresh or --top_pct')
+
+        for seq in delta_dict[task].keys():
+            capture_dict[task][seq] = {}
+            for m_label in delta_dict[task][seq].keys():
+                for r in delta_dict[task][seq][m_label].keys():
+
+                    if abs(delta_dict[task][seq][m_label][r][
+                                'delta_profile']).max() > score_thresh:
+
+                        capture_key = '{0}_{1}'.format(m_label, r)
+                        mut_key = delta_dict[task][seq][m_label][r]['mut_key']
+
+                        capture_dict[task][seq][capture_key] = {
+                                    'delta_dict': delta_dict[task][seq][m_label][r],
+                                    'dfim': dfim_dict[task][seq][mut_key]}
+
+    if pickle_file is not None:
+
+        pickle.dump(capture_dict, open(pickle_file, 'w'))
+        print("Dumped capture_dict to %s"%pickle_file)
+
+    else:
+
+        return capture_dict
 
 
