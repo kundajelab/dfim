@@ -180,7 +180,7 @@ def compute_importance(model, sequences, tasks,
     print('Calculating Importance Scores')
 
     importance_method = {
-        "rescale_conv_revealcancel_fc": deeplift.blobs.NonlinearMxtsMode.DeepLIFT_GenomicsDefault,
+        "deeplift": deeplift.blobs.NonlinearMxtsMode.DeepLIFT_GenomicsDefault,
         "rescale_all_layers": deeplift.blobs.NonlinearMxtsMode.Rescale,
         "revealcancel_all_layers": deeplift.blobs.NonlinearMxtsMode.RevealCancel,
         "gradient_input": deeplift.blobs.NonlinearMxtsMode.Gradient,
@@ -235,12 +235,16 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 mut_ind = mutated_seq_key.loc[mut_i, 'array_ind']
                 mut_start = mutated_seq_key.loc[mut_i, 'mut_start']
                 mut_end = mutated_seq_key.loc[mut_i, 'mut_end']
+                # orig_letter = mutated_seq_key.loc[mut_i, 'orig_letter']
+                # orig_letter_ind = get_letter_index(orig_letter)
                 for r in range(len(resp_starts)):
                     response_mut_profile = score_dict[task][mut_ind][resp_starts[r]:resp_ends[r], :]
                     orig_profile = score_dict[task][orig_ind][resp_starts[r]:resp_ends[r], :]
                     delta_profile = orig_profile - response_mut_profile
-                    # Set delta profile to 0 at mutation
-                    delta_profile[mut_start:mut_end, :] = 0
+                    # Set delta profile to 0 at mutation for ORIG LETTER ONLY
+                    # delta_profile[(mut_start-resp_starts[r]):(mut_end-resp_ends[r]), orig_letter_ind] = 0
+                    # Set delta profile to 0 at mutation for all letters
+                    delta_profile[(mut_start-resp_starts[r]):(mut_end-resp_ends[r]), :] = 0
                     if mutated_seq_preds is not None:
                         pred_diff = (mutated_seq_preds[orig_ind] - mutated_seq_preds[mut_ind])[0]
                     else:
