@@ -219,8 +219,6 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
             orig_ind = mutated_seq_key[mutated_seq_key.seq == seq].loc[
                                        mutated_seq_key.label == 'original', 'array_ind'].tolist()[0]
             # Get all mutants of that sequence
-            # seq_mutants = mutated_seq_key[mutated_seq_key.seq == seq].loc[
-            #                               mutated_seq_key.label != 'original', 'mut_key'].tolist()
             seq_mutant_indices = mutated_seq_key[mutated_seq_key.seq == seq].loc[
                                           mutated_seq_key.label != 'original', :].index.tolist()
             # Iterate through mutants
@@ -250,7 +248,6 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                     else:
                         pred_diff = None
                     r_key = 'resp_{0}_{1}to{2}'.format(resp_names[r], str(resp_starts[r]), str(resp_ends[r]))
-                    # r_key = 'mut_{0};response_{1}_at_{2}'.format(m, resp_names[r], str(resp_starts[r]))
                     ### Combine code below
                     if capture_seqs_max_thresh is None:
                         delta_dict[task][seq][m_label][r_key] = {'orig_profile': orig_profile,
@@ -319,9 +316,14 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
                   operations, operation_axes, 
                   summarize_per_pos=False):
 
-    # Pandas data frame with element and then per base response  
-    # Need every response to be the same length 
-    # Currently don't use operations
+    """
+    For motifs
+        - returns Pandas data frame with element and then per base response  
+    For base-pair
+        - returns 5D numpy array (mut_size, orig_letter, mut_letter, resp_size, resp_letter)
+    Need every response to be the same length 
+    Currently don't use operations
+    """
 
     mut_starts = dfim_key.mut_start.unique().tolist()
 

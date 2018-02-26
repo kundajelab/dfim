@@ -1,4 +1,5 @@
 ### Adapted from https://github.com/kundajelab/dragonn/blob/master/dragonn/plot.py
+### Authored by Nathan Boley
 
 import re
 
