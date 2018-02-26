@@ -72,9 +72,9 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
 
     if per_base_map:
         key_columns = ['array_ind', 'label', 'seq',  'mut_key', 'mut_start',
-                      'orig_letter', 'mut_letter']
+                      'orig_letter', 'mut_letter', 'mut_end']
     else:
-        key_columns = ['array_ind', 'label', 'seq', 'mut_key', 'mut_start']
+        key_columns = ['array_ind', 'label', 'seq', 'mut_key', 'mut_start', 'mut_end']
 
     mutated_seq_key = pd.DataFrame(columns=key_columns, 
                                    index=range(total_index_size))
@@ -89,7 +89,7 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
             # Add original sequence to the list of sequences
             mutated_seq_list.append(sequences[seq])
             orig_dict = {'array_ind': ind, 'seq': seq, 'label': 'original', 
-                         'mut_key': 'original', 'mut_start': -1}
+                         'mut_key': 'original', 'mut_start': -1, 'mut_end': -1}
             if per_base_map:
                 orig_dict['orig_letter'] = -1; orig_dict['mut_letter'] = -1; 
 
@@ -117,7 +117,8 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mutated_seq_key.iloc[ind, :]={'array_ind':ind, 'seq': seq, 'label': label, 
                                                           'mut_key': m, 'mut_start': mut_start,
                                                           'orig_letter': orig_letter, 
-                                                          'mut_letter': mut_letter}
+                                                          'mut_letter': mut_letter,
+                                                          'mut_end': mut_end}
                             ind += 1
 
                 elif per_base_map and mut_end - mut_start > 1 :
@@ -143,7 +144,8 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                             mutated_seq_key.iloc[ind, :]={'array_ind':ind, 'seq': seq, 'label': label, 
                                                           'mut_key': m, 'mut_start': current_mut_start,
                                                           'orig_letter': orig_letter, 
-                                                          'mut_letter': mut_letter}
+                                                          'mut_letter': mut_letter,
+                                                          'mut_end': mut_end}
                             ind += 1
 
                 # If the mutation size is greater than 1 then just set to 0s or GC (?)
@@ -155,7 +157,8 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                     label = m + ';' + 'seq_'+ str(seq) + '_' + 'loc{0}-{1}'.format(
                                                             str(mut_start), str(mut_end))
                     mutated_seq_key.iloc[ind, :] = {'array_ind':ind, 'seq': seq, 'label': label,
-                                                   'mut_key': m, 'mut_start': mut_start}
+                                                   'mut_key': m, 'mut_start': mut_start,
+                                                   'mut_end': mut_end}
                     ind += 1
 
                 else:
