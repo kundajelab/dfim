@@ -243,7 +243,7 @@ def compute_importance(model, sequences, tasks,
     reference_shuffle_type in ['random', 'dinuc']
     """
 
-    ### Compute deepLIft
+    ### Compute deepLIFT
     print('Calculating Importance Scores')
 
     importance_method = {
@@ -274,13 +274,13 @@ def compute_importance(model, sequences, tasks,
             import dfim.util
             reload(dfim.util)
             seq_fastas = dfim.util.convert_one_hot_to_fasta(sequences)
-            scores = np.array(new_importance_func(task_idx=0,
+            scores = np.array(new_importance_func(task_idx=task, # was 0
                                                   input_data_sequences=seq_fastas,
                                                   num_refs_per_seq=num_refs_per_seq,
                                                   batch_size=10,
                                                   progress_update=1000))
         else:
-            scores = np.array(new_importance_func(task_idx=0,
+            scores = np.array(new_importance_func(task_idx=task,
                                                    input_data_list=[sequences],
                                                    batch_size=10,
                                                    progress_update=1000,
