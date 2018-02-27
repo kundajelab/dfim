@@ -241,9 +241,11 @@ def compute_importance(model, sequences, tasks,
                        num_refs_per_seq=5):
     """
     reference_shuffle_type in ['random', 'dinuc']
+    reference_gc = 0 will return numpy array of 0s
+    reference_gc < 1 will assign each G and C reference_gc/2
     """
 
-    ### Compute deepLIFT
+    ### Compute Importance scores
     print('Calculating Importance Scores')
 
     importance_method = {
