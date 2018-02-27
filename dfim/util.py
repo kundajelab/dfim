@@ -5,6 +5,7 @@
 import os, sys
 import numpy as np
 import pandas as pd
+import random
 
 import matplotlib
 matplotlib.use('Agg') 
@@ -13,6 +14,8 @@ import matplotlib.gridspec as grd
 
 import pybedtools
 from Bio import SeqIO
+
+import dfim.core
 
 def one_hot_encode(sequence):
 
@@ -174,6 +177,37 @@ def load_sequences_from_bed(bed_file=None,
     else:
         return sequences
 
+def random_shuffle_one_hot(sequence, seed=1):
+    random.seed(seed)
+    if sequence.shape[-2] > sequence.shape[-1]:
+        sample_index = -2
+    else:
+        sample_index = -1
+    sample_size = sequence.shape[sample_index]
+    new_index = random.sample(range(sample_size), sample_size)
+    new_sequence = sequence[new_index, :] if sample_index == -2 \
+                                          else sequence[:, new_index]
+    return new_sequence
+
+def random_shuffle_fasta(fasta_seq, seed=1):
+    random.seed(seed)
+    l = list(fasta_seq)
+    random.shuffle(l)
+    shuf_fasta_seq = ''.join(l)
+    return shuf_fasta_seq
+
+
+def convert_one_hot_to_fasta(sequences):
+    fasta_list = []
+    for s in range(sequences.shape[0]):
+        fasta_string = ''
+        for i in range(sequences[s].shape[-2]):
+            letter = dfim.core.get_orig_letter(sequences[s, i, :])
+            fasta_string = fasta_string + letter
+        assert len(fasta_string) == sequences[s].shape[-2]
+        fasta_list.append(fasta_string)
+    return fasta_list
+
 def process_seqs_and_locations_from_bed(bed_file, genome_file,
                                         seq_len=1000, flank_size=15):
     """ 
@@ -306,10 +340,41 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
     return (sequences, seqlet_loc_dict)
 
 
+### Dinucleotide shuffling
+### Credit to 
+### https://github.com/kundajelab/deeplift/blob/master/deeplift/dinuc_shuffle.py
 
+from collections import defaultdict
+from random import shuffle
 
+def prepare_edges(s):
+    edges = defaultdict(list)
+    for i in xrange(len(s)-1):
+        edges[s[i]].append(s[i+1])
+    return edges
 
+def shuffle_edges(edges):
+    #for each character, remove the last edge, shuffle, add edge back
+    for char in edges:
+        last_edge = edges[char][-1]
+        edges[char] = edges[char][:-1]
+        the_list = edges[char]
+        shuffle(the_list)
+        edges[char].append(last_edge)
+    return edges
 
+def traverse_edges(s, edges):
+    generated = [s[0]]
+    edges_queue_pointers = defaultdict(lambda: 0)
+    for i in range(len(s)-1):
+        last_char = generated[-1]
+        generated.append(edges[last_char][edges_queue_pointers[last_char]])
+        edges_queue_pointers[last_char] += 1
+    return "".join(generated)
+
+def dinuc_shuffle(s):
+    s = s.upper()
+    return traverse_edges(s, shuffle_edges(prepare_edges(s)))
 
 
 
