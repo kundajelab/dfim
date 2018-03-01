@@ -137,10 +137,16 @@ def assign_empirical_pval(real_values, null_values):
         pval = float(1+sum(float(val) <= np.array(null_values)))/(len(null_values)+1)
         return pval
 
-    pval_df = real_values.applymap(empirical_pvalue)
-    np.fill_diagonal(pval_df.values, 1)
+    try:
+        pval_df = real_values.applymap(empirical_pvalue)
+        # If square then assign 1 p-value to diagonals
+        if pval_df.shape[0] == pval_df.shape[1] & len(pval_df.shape) == 2:
+            np.fill_diagonal(pval_df.values, 1)
+    except:
+        pval_df = np.vectorize(empirical_pvalue)(real_values)
 
     return pval_df
+
 
 def assign_fit_pval(real_values, null_values):
     '''
@@ -163,16 +169,17 @@ def assign_fit_pval(real_values, null_values):
         pval = 1 - scipy.stats.norm.cdf(val, mu, std)
         return pval
 
-    if hasattr(real_values, 'applymap'):
-
+    try:
         pval_df = real_values.applymap(gaussian_pvalue)
-        np.fill_diagonal(pval_df.values, 1)
-        return pval_df
+        # If square then assign 1 p-value to diagonals
+        if pval_df.shape[0] == pval_df.shape[1]:
+            np.fill_diagonal(pval_df.values, 1)
+    except:
+        pval_df = np.vectorize(gaussian_pvalue)(real_values)
 
-    else:
 
-        pval_list = [gaussian_pvalue(el) for el in real_values]
-        return pval_list
+    return pval_df
+
 
 
 def assign_pval(dfim_dict, null_dict, null_level='per_map',
@@ -211,8 +218,8 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
 
             for seq in dfim_dict.keys():
 
-                flat_real_values = dfim_dict[task][seq].values().flatten()
-                flat_null_values = null_dict[task][seq].values().flatten()
+                flat_real_values = dfim_dict[task][seq].flatten()
+                flat_null_values = null_dict[task][seq].flatten()
 
                 flat_pvalues = pval_func(flat_real_values, flat_null_values)
 
@@ -229,8 +236,12 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
             list_real_values = flatten_nested_dict(dfim_dict[task])
             list_null_values = flatten_nested_dict(null_dict[task])
 
-            flat_null_values = [el for df in list_null_values 
-                                   for el in df.values.flatten() if el != diagonal_value]
+            try:
+                flat_null_values = [el for df in list_null_values 
+                                       for el in df.values.flatten() if el != diagonal_value]
+            except:
+                flat_null_values = [el for df in list_null_values 
+                                       for el in df.flatten() if el != diagonal_value]
 
             list_pvalues = [pval_func(df, flat_null_values) for df in list_real_values]
 
@@ -243,8 +254,12 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
         list_real_values = flatten_nested_dict(dfim_dict)
         list_null_values = flatten_nested_dict(null_dict)
 
-        flat_null_values = [el for df in list_null_values 
+        try:
+            flat_null_values = [el for df in list_null_values 
                                for el in df.values.flatten() if el != diagonal_value]
+        except:
+            flat_null_values = [el for df in list_null_values 
+                                   for el in df.flatten() if el != diagonal_value]
 
         list_pvalues = [pval_func(df, flat_null_values) for df in list_real_values]
 
@@ -270,6 +285,7 @@ def assign_pval(dfim_dict, null_dict, null_level='per_map',
                 plot_file='/users/pgreens/temp/dfim_qq_plot.png')
 
     return dfim_pval_dict
+
 
 def qq_plot(flat_real_pvals, flat_null_pvals, plot_file=None):
 
