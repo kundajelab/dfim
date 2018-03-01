@@ -289,7 +289,6 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
 
     feature_start_col = len(labels_df.columns) + 1
     feature_end_col = len(labels_df.columns) + 2
-    print intersect_df.iloc[:, feature_end_col::].head()
 
     seqlet_loc_dict = {}
 
@@ -311,11 +310,11 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
             pre_mut_flank = post_mut_flank = int(seq_flank_size)
         seq_coords.append([chrom, start - pre_mut_flank, end + post_mut_flank])
 
-        feature_start = mut_start - start + pre_mut_flank
-        feature_end = mut_end - start + post_mut_flank
+        feature_start = np.max([0, mut_start - start + pre_mut_flank])
+        feature_end = np.min([seq_len, mut_end - start + post_mut_flank])
 
-        resp_starts = [feature_start - flank_size]
-        resp_ends = [feature_end + flank_size]
+        resp_starts = [np.max([0, feature_start - flank_size])]
+        resp_ends = [np.min([seq_len, feature_end + flank_size])]
         resp_names = ['flank_%s'%flank_size]
 
         return_key = 'seq_%s'%(bed_ind)
@@ -331,7 +330,6 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
         seqlet_loc_dict[return_key] = return_dict
 
     peak_df = pd.DataFrame(seq_coords)
-    print peak_df.head()
 
     # Now generate sequences
     sequences = load_sequences_from_bed(bed=peak_df, 

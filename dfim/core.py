@@ -15,6 +15,7 @@ import deeplift
 from deeplift.conversion import keras_conversion as kc
 
 BASES = ['A','C','G','T']
+DEFAULT_GC_FRACTION = 0.46
 
 def get_orig_letter(one_hot_vec):
     assert(len(np.where(one_hot_vec!=0)[0]) == 1)
@@ -39,7 +40,8 @@ def get_letter_index(letter):
 
 
 def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None, 
-                             mutants=BASES, per_base_map=False):
+                             mutants=BASES, per_base_map=False,
+                             mutant_gc_content=DEFAULT_GC_FRACTION):
     """
     mut_loc_dict = {name: {'seq': 'mut_start': int, 'mut_end' int, 'resp_start': [], resp_end: []}}
     sequence_index: used to preserve index used in mut_loc_dict 
@@ -160,7 +162,14 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                 elif per_base_map == False:
                     assert mut_end - mut_start > 1
                     mutated_seq = copy.deepcopy(sequences[seq])
-                    mutated_seq[mut_start:mut_end, :] = 0 
+                    if mutant_gc_content == 0:
+                        mutated_seq[mut_start:mut_end, :] = 0 
+                    else:
+                        assert mutant_gc_content < 1
+                        mutated_seq[mut_start:mut_end, 
+                                        [0,3]] = (1 - mutant_gc_content)/2
+                        mutated_seq[mut_start:mut_end, 
+                                        [1,2]] = mutant_gc_content/2
                     mutated_seq_list.append(mutated_seq)
                     label = '{0};seq_{1}_loc{2}-{3}'.format(
                                 m, str(seq), str(mut_start), str(mut_end))
@@ -459,6 +468,41 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
     return dfim_array
 
 
+def dfim_element_by_base(delta_dict, task, seq, all_mut_pos, 
+                         all_resp_pos, diagonal_value,
+                         operations, operation_axes,
+                         absolute_value):
+
+    """
+    TODO(pgreenside): FIX
+    For every mutant just plot the dfim
+    """
+
+    dfim_seq_dict = {}
+
+    # Extract all the differential profiles
+    for m in delta_dict[task][seq].keys():
+        assert len(delta_dict[task][seq][m].keys()) == 1
+        r = delta_dict[task][seq][m].keys()[0]
+
+        if absolute_value:
+            delta_profile = abs(delta_dict[task][seq][m][r]['delta_profile'])
+        else:
+            delta_profile = delta_dict[task][seq][m][r]['delta_profile']
+
+        i_score = delta_profile
+
+        for o in range(len(operations)):
+
+            # Perform operations
+            i_score = np.apply_along_axis(operations[o],
+                                          operation_axes[o],
+                                          i_score)
+        dfim_seq_dict[m] = i_score
+
+    return dfim_seq_dict
+
+
 def compute_dfim(delta_dict, sequence_index, tasks,
                  operations=[np.sum, np.max], operation_axes=[1, 0],
                  absolute_value=True,
@@ -514,13 +558,14 @@ def compute_dfim(delta_dict, sequence_index, tasks,
 
                         # print('Detected response elements of same size %s, making DFIM'%resp_sizes[0])
 
-                        dfim_array =  dfim_per_base(dfim_key=mutated_seq_key[mutated_seq_key.mut_key == mkey], 
-                                                    resp_size=np.unique(resp_sizes)[0], 
-                                                    diagonal_value=diagonal_value,
-                                                    delta_dict=delta_dict, task=task,
-                                                    seq=seq, absolute_value=absolute_value,
-                                                    operations=operations, 
-                                                    operation_axes=operation_axes)
+                        dfim_array =  dfim_per_base(
+                                        dfim_key=mutated_seq_key[mutated_seq_key.mut_key == mkey], 
+                                        resp_size=np.unique(resp_sizes)[0], 
+                                        diagonal_value=diagonal_value,
+                                        delta_dict=delta_dict, task=task,
+                                        seq=seq, absolute_value=absolute_value,
+                                        operations=operations, 
+                                        operation_axes=operation_axes)
 
                         dfim_dict[task][seq][mkey] = dfim_array
 
@@ -529,8 +574,9 @@ def compute_dfim(delta_dict, sequence_index, tasks,
  
                     else:
 
-                        raise ValueError('''Warning: response locations are of variable sizes, '''
-                              '''generating per element map by default''')
+                        raise ValueError(
+                             '''Warning: response locations are of variable '''
+                              '''sizes, generating per element map by default''')
 
             else:
 
@@ -543,35 +589,52 @@ def compute_dfim(delta_dict, sequence_index, tasks,
                                                for r in delta_dict[task][seq][m].keys()])   
 
 
-                dfim_df = dfim_per_element(delta_dict=delta_dict, 
-                                           task=task, seq=seq, 
-                                           all_mut_pos=all_mut_pos, 
-                                           all_resp_pos=all_resp_pos, 
-                                           diagonal_value=diagonal_value,
-                                           operations=operations, 
-                                           operation_axes=operation_axes,
-                                           absolute_value=absolute_value)
+                if len(all_resp_pos) > 1:
 
-                # Make function to annotate with simdna (supply annotation function as argument)
-                if annotate:
+                    dfim_df = dfim_per_element(delta_dict=delta_dict, 
+                                               task=task, seq=seq, 
+                                               all_mut_pos=all_mut_pos, 
+                                               all_resp_pos=all_resp_pos, 
+                                               diagonal_value=diagonal_value,
+                                               operations=operations, 
+                                               operation_axes=operation_axes,
+                                               absolute_value=absolute_value)
 
-                    # Add annotations to the rows
-                    # Current depends on simdna structure, useful for motif analysis only
+                    # Make function to annotate with simdna (supply annotation function as argument)
+                    if annotate:
 
-                    assert mutated_seq_key is not None
+                        # Add annotations to the rows
+                        # Current depends on simdna structure, useful for motif analysis only
 
-                    seq_df = mutated_seq_key[mutated_seq_key.seq==seq]
-                    mut_annots = [seq_df.loc[seq_df.mut_start == p, 'mut_key'
-                                            ].tolist()[0].split('-')[1]
-                                    for p in dfim_df.index]
-                    resp_annots = [seq_df.loc[seq_df.mut_start == p, 'mut_key'
-                                            ].tolist()[0].split('-')[1]
-                                    for p in dfim_df.columns]
-                    dfim_df.index = mut_annots
-                    dfim_df.columns = resp_annots
+                        assert mutated_seq_key is not None
 
-                # Return the map for each seq and task
-                dfim_dict[task][seq] = dfim_df
+                        seq_df = mutated_seq_key[mutated_seq_key.seq==seq]
+                        mut_annots = [seq_df.loc[seq_df.mut_start == p, 'mut_key'
+                                                ].tolist()[0].split('-')[1]
+                                        for p in dfim_df.index]
+                        resp_annots = [seq_df.loc[seq_df.mut_start == p, 'mut_key'
+                                                ].tolist()[0].split('-')[1]
+                                        for p in dfim_df.columns]
+                        dfim_df.index = mut_annots
+                        dfim_df.columns = resp_annots
+
+                    # Return the map for each seq and task
+                    dfim_dict[task][seq] = dfim_df
+
+                else:
+
+                    raise ValueError('''Warning: not implemented yet''')
+
+                    dfim_seq_dict =  dfim_element_by_base(
+                                       dfim_key=mutated_seq_key[mutated_seq_key.seq == seq], 
+                                       resp_size=np.unique(resp_sizes)[0], 
+                                       diagonal_value=diagonal_value,
+                                       delta_dict=delta_dict, task=task,
+                                       seq=seq, absolute_value=absolute_value,
+                                       operations=operations, 
+                                       operation_axes=operation_axes)
+
+                    dfim_dict[task][seq] = dfim_dict
 
     return dfim_dict
 

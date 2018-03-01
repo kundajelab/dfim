@@ -8,6 +8,7 @@ matplotlib.use('pdf')
 from matplotlib import pyplot as plt
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
+import matplotlib.patches as mpatches
 
 from shapely.wkt import loads as load_wkt
 from shapely import affinity
@@ -330,10 +331,12 @@ def plot_delta_tracks(track_list, title_list, x_tick_interval=1,
                 y_neg_pos = 0.0
                 for height, letter in letters_and_heights:
                     if height > 0:
-                        add_letter_to_axis(ax, letter, -0.5+x_pos, y_pos_pos, height)
+                        add_letter_to_axis(ax, letter, -0.5+x_pos, 
+                                           y_pos_pos, height)
                         y_pos_pos += height
                     else:
-                        add_letter_to_axis(ax, letter, -0.5+x_pos, y_neg_pos, height)
+                        add_letter_to_axis(ax, letter, -0.5+x_pos, 
+                                           y_neg_pos, height)
                         y_neg_pos += height
             if (i==len(track_list)):
                 ax.set_xlabel('pos')
@@ -357,4 +360,27 @@ def plot_delta_tracks(track_list, title_list, x_tick_interval=1,
     if plot_file is not None:
         plt.savefig(plot_file)
     plt.show()
+
+
+def plot_dfim(map_array, figsize=(2, 6)):
+    """
+    Plot map
+    """
+    if len(map_array.shape) != 2:
+        raise ValueError('Provide map array with shape 2 or unravel map')
+    plt.figure(figsize=figsize)
+    fig, ax = plt.subplots()
+    im = ax.imshow(map_array, aspect='auto')
+    values = np.unique(map_array.ravel())
+    legend_values=[np.min(values), np.mean(values), np.max(values)]
+    colors = [ im.cmap(im.norm(value)) for value in legend_values]
+    patches = [ mpatches.Patch(color=colors[i], 
+                               label="Level {l}".format(
+                                l='%.4f'%legend_values[i])) 
+                   for i in range(len(legend_values))]
+    plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), 
+               loc=2, borderaxespad=0. )
+    plt.show()
+
+
 
