@@ -105,10 +105,12 @@ def restore_nested_dict(score_dict, scores_list):
 
     key_tree = {}
     new_score_dict = {}
-    scores_start = 0
+    scores_start = [0]
 
-    def restore_leaf(score_dict, descend=0, key_tree=None, scores_start=scores_start):
+    def restore_leaf(score_dict, descend=0, key_tree=None, 
+                     scores_start=None):
         for key, val in score_dict.iteritems():
+            # print key; print key_tree; print scores_start
             if isinstance(val, dict):
                 if descend not in key_tree:
                     key_tree[descend] = [key]
@@ -117,13 +119,14 @@ def restore_nested_dict(score_dict, scores_list):
                 current_key_tree = [key_tree[d][-1] for d in range(descend)
                                    ] + [key] if descend > 0 else [key]
                 set_in_dict(new_score_dict, current_key_tree, {})
-                restore_leaf(val, descend = descend+1, key_tree = key_tree)
+                restore_leaf(val, descend = descend+1, key_tree = key_tree,
+                             scores_start=scores_start)
             else:
                 final_key_tree = [key_tree[d][-1] for d in range(descend)] + [key]
-                set_in_dict(new_score_dict, final_key_tree, scores_list[scores_start])
-                scores_start += 1
+                set_in_dict(new_score_dict, final_key_tree, scores_list[scores_start[0]])
+                scores_start[0] += 1
 
-    restore_leaf(score_dict, key_tree=key_tree)
+    restore_leaf(score_dict, key_tree=key_tree, scores_start=scores_start)
 
     return new_score_dict
 
@@ -176,7 +179,6 @@ def assign_fit_pval(real_values, null_values):
             np.fill_diagonal(pval_df.values, 1)
     except:
         pval_df = np.vectorize(gaussian_pvalue)(real_values)
-
 
     return pval_df
 
