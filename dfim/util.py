@@ -322,7 +322,8 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
         return_dict = {'seq': bed_ind,
                        'mut_start': feature_start,
                        'mut_end': feature_end,
-                       'mut_name': '%s:%s-%s'%(chrom, start, end),
+                       'mut_name': '%s:%s-%s;mut_%s_to_%s'%(
+                                        chrom, start, end, mut_start, mut_end),
                        'resp_start': resp_starts,
                        'resp_end': resp_ends,
                        'resp_names': resp_names}
@@ -336,6 +337,45 @@ def process_seqs_and_locations_from_bed_and_labels(bed_file, labels_file,
                                         genome_file=genome_file)
 
     return (sequences, seqlet_loc_dict)
+
+def rank_by_min_pval(dfim_pval_dict):
+    """
+    Return task, seq, mut with smallest p-values
+    """
+
+    all_results = [((task, seq, mut), np.min(dfim_pval_dict[task][seq][mut]))
+                        for task in dfim_pval_dict.keys()
+                        for seq in dfim_pval_dict[task].keys()
+                        for mut in dfim_pval_dict[task][seq].keys()]
+
+    sorted_results = sorted(all_results, key = lambda x: x[1])
+
+    return sorted_results
+
+def rank_by_max_total_interaction(dfim_dict, dfim_pval_dict=None):
+    """
+    Return task, seq, mut with smallest p-values
+    """
+
+    if dfim_pval_dict is None:
+
+        all_results = [((task, seq, mut), np.sum(dfim_dict[task][seq][mut]))
+                            for task in dfim_dict.keys()
+                            for seq in dfim_dict[task].keys()
+                            for mut in dfim_dict[task][seq].keys()]
+
+    else:
+
+        # Only take sum of significant ones to mitigate noise
+        all_results = [((task, seq, mut), np.sum(dfim_dict[task][seq][mut] * (
+                                        dfim_pval_dict[task][seq][mut] < 0.05)))
+                            for task in dfim_dict.keys()
+                            for seq in dfim_dict[task].keys()
+                            for mut in dfim_dict[task][seq].keys()]
+
+    sorted_results = sorted(all_results, key = lambda x: -1 * x[1])
+
+    return sorted_results
 
 
 ### Dinucleotide shuffling

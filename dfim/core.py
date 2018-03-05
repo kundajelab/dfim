@@ -18,7 +18,10 @@ BASES = ['A','C','G','T']
 DEFAULT_GC_FRACTION = 0.46
 
 def get_orig_letter(one_hot_vec):
-    assert(len(np.where(one_hot_vec!=0)[0]) == 1)
+    try:
+        assert(len(np.where(one_hot_vec!=0)[0]) == 1)
+    except:
+        return 'N'
     if one_hot_vec[0] != 0:
         return 'A'
     elif one_hot_vec[1] != 0:
@@ -138,6 +141,7 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                         orig_letter  = get_orig_letter(
                                         sequences[seq][current_mut_start, :])
                         seq_mutants = [el for el in mutants if el != orig_letter]
+                        current_mut_end = current_mut_start + 1
                         for mut_letter in seq_mutants:
                             mutated_seq = copy.deepcopy(sequences[seq])
                             mut_index = get_letter_index(mut_letter)
@@ -155,7 +159,7 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                                   'mut_start': current_mut_start,
                                   'orig_letter': orig_letter, 
                                   'mut_letter': mut_letter,
-                                  'mut_end': mut_end}
+                                  'mut_end': current_mut_end}
                             ind += 1
 
                 # If the mutation size is greater than 1 then just set to 0s
@@ -246,7 +250,7 @@ def compute_importance(model, sequences, tasks,
                        target_layer_idx=-2,
                        reference_gc=0.46,
                        reference_shuffle_type=None,
-                       num_refs_per_seq=5):
+                       num_refs_per_seq=3):
     """
     reference_shuffle_type in ['random', 'dinuc']
     reference_gc = 0 will return numpy array of 0s
@@ -438,7 +442,7 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
 
     mut_starts = dfim_key.mut_start.unique().tolist()
 
-    dfim_array = np.zeros((len(mut_starts), 4, 4, resp_size, 4))
+    dfim_array = np.ones((len(mut_starts), 4, 4, resp_size, 4)) * diagonal_value
 
     for i in dfim_key.index:
 
@@ -458,7 +462,6 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
             delta_profile = delta_dict[task][seq][label][r]['delta_profile']
 
         dfim_array[start_ind, orig_letter_ind, mut_letter_ind, :, :] = delta_profile
-
 
     if operations is not None:
 
@@ -532,6 +535,7 @@ def compute_dfim(delta_dict, sequence_index, tasks,
 
     assert len(operations) == len(operation_axes)
 
+    # dfim_dict holds the actual arrays
     dfim_dict = {}
 
     # For each sequence and task
@@ -563,14 +567,14 @@ def compute_dfim(delta_dict, sequence_index, tasks,
 
                         # print('Detected response elements of same size %s, making DFIM'%resp_sizes[0])
 
-                        dfim_array =  dfim_per_base(
-                                        dfim_key=mutated_seq_key[mutated_seq_key.mut_key == mkey], 
-                                        resp_size=np.unique(resp_sizes)[0], 
-                                        diagonal_value=diagonal_value,
-                                        delta_dict=delta_dict, task=task,
-                                        seq=seq, absolute_value=absolute_value,
-                                        operations=operations, 
-                                        operation_axes=operation_axes)
+                        dfim_array = dfim_per_base(
+                            dfim_key=mutated_seq_key[mutated_seq_key.mut_key == mkey], 
+                            resp_size=np.unique(resp_sizes)[0], 
+                            diagonal_value=diagonal_value,
+                            delta_dict=delta_dict, task=task,
+                            seq=seq, absolute_value=absolute_value,
+                            operations=operations, 
+                            operation_axes=operation_axes)
 
                         dfim_dict[task][seq][mkey] = dfim_array
 
@@ -633,8 +637,6 @@ def compute_dfim(delta_dict, sequence_index, tasks,
 
                 else:
  
-                    # raise ValueError('''Warning: not implemented yet''')
-
                     dfim_seq_dict =  dfim_element_by_base(
                                        diagonal_value=diagonal_value,
                                        delta_dict=delta_dict, task=task,

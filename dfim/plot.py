@@ -362,7 +362,7 @@ def plot_delta_tracks(track_list, title_list, x_tick_interval=1,
     plt.show()
 
 
-def plot_dfim(map_array, figsize=(2, 6)):
+def plot_dfim(map_array, figsize=(10, 3)):
     """
     Plot map
     """
@@ -370,7 +370,10 @@ def plot_dfim(map_array, figsize=(2, 6)):
         raise ValueError('Provide map array with shape 2 or unravel map')
     plt.figure(figsize=figsize)
     fig, ax = plt.subplots()
-    im = ax.imshow(map_array, aspect='auto')
+    if map_array.shape[0] == 1:
+        im = ax.imshow(map_array, aspect=10)
+    else:
+        im = ax.imshow(map_array, aspect='auto')
     values = np.unique(map_array.ravel())
     legend_values=[np.min(values), np.mean(values), np.max(values)]
     colors = [ im.cmap(im.norm(value)) for value in legend_values]
