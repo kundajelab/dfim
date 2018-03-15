@@ -41,11 +41,11 @@ Given your sequences and a mutation dictionary as above, there are several steps
  
 We provide utilities to visualize the delta profiles or the DFIM (see `plot_delta_tracks()` and `plot_dfim()` in plot.py)
 
-See the examples/ folder for a complete demonstration of how to use the code base. 
+See the examples/embedded_motif_interaction_example.ipynb notebook for a complete demonstration of how to use the code base. 
 
 ## Installation
 
 Installation can be done with `python setup.py install` or through `pip install dfim`. 
 
-Requirements: scipy, numpy>=1.11, pandas, deeplift
+Requirements: scipy, numpy>=1.11, pandas, deeplift  
 Optional: matplotlib, h5py, biopython
