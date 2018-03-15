@@ -4,9 +4,15 @@ Contact: Peyton Greenside (pgreens @ stanford.edu).
 
 ## Description
 
-This code base enables interpretation of interactions learned by a deep learning model and represents these interactions in a Deep Feature Interaction Map (DFIM).
+This code base enables interpretation of interactions learned by a deep learning model and represents these interactions in a Deep Feature Interaction Map (DFIM). It is designed primarily to identify interactions between sequence elements in regulatory DNA sequence, but can be applied to other modalities.
 
 Dependencies can be observed between individual bases (i.e. between variants and each base in the surrounding sequence), between motifs (i.e. between transcription factor binding domains) or between a motif and a set of bases (i.e. effect of mutation on a binding motif). See functions `dfim_per_element`, `dfim_per_base`, and `dfim_element_by_base` in core.py.
+
+DFIM works through creating strategic perturbation of features of interest (or an entire DNA sequence) and using backpropagation-based importance scoring methods to efficiently estimate the effect on the surrounding sequence.
+
+![DFIM_Outline_Figure](/examples/DFIM_description_image.png)
+
+## Usage
 
 You can construct your desired features (source elements to mutate and target elements that respond) with a dictionary of the following format where every key is your desired label for the mutation and every value is a dictionary containing the follow elements:
   
