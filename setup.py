@@ -19,7 +19,7 @@ def main():
         description = ("Deep Feature Interaction Maps"),
 
         license = "GPL3",
-        keywords = "boosting",
+        keywords = "feature interactions for deep learning models",
         url = "https://github.com/kundajelab/dfim",
 
         long_description="""

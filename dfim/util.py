@@ -15,7 +15,31 @@ import matplotlib.gridspec as grd
 import pybedtools
 from Bio import SeqIO
 
-import dfim.core
+
+def get_orig_letter(one_hot_vec):
+    try:
+        assert(len(np.where(one_hot_vec!=0)[0]) == 1)
+    except:
+        return 'N'
+    if one_hot_vec[0] != 0:
+        return 'A'
+    elif one_hot_vec[1] != 0:
+        return 'C'
+    elif one_hot_vec[2] != 0:
+        return 'G'
+    elif one_hot_vec[3] != 0:
+        return 'T'
+
+def get_letter_index(letter):
+    if letter == 'A':
+        return 0
+    elif letter == 'C':
+        return 1
+    elif letter == 'G': 
+        return 2
+    elif letter == 'T':
+        return 3
+
 
 def one_hot_encode(sequence):
 
@@ -202,7 +226,7 @@ def convert_one_hot_to_fasta(sequences):
     for s in range(sequences.shape[0]):
         fasta_string = ''
         for i in range(sequences[s].shape[-2]):
-            letter = dfim.core.get_orig_letter(sequences[s, i, :])
+            letter = get_orig_letter(sequences[s, i, :])
             fasta_string = fasta_string + letter
         assert len(fasta_string) == sequences[s].shape[-2]
         fasta_list.append(fasta_string)

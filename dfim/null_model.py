@@ -166,10 +166,14 @@ def assign_fit_pval(real_values, null_values):
                  with less than {0} values""".format(WARNING_NULL_SIZE))
 
     mu, std = scipy.stats.norm.fit(null_values)
+    print('estimating null distribution with mean %s and std %s'%(mu, std))
 
-    def gaussian_pvalue(val, null_values=null_values):
-        # z_score = (mu - val) / std
-        pval = 1 - scipy.stats.norm.cdf(val, mu, std)
+    def gaussian_pvalue(val, null_values=null_values, two_sided=False):
+        if two_sided:
+            pval = np.min([1 - scipy.stats.norm.cdf(val, mu, std), 
+                           scipy.stats.norm.cdf(val, mu, std)])
+        else:
+            pval = 1 - scipy.stats.norm.cdf(val, mu, std)
         return pval
 
     try:

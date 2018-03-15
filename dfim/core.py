@@ -17,31 +17,6 @@ from deeplift.conversion import keras_conversion as kc
 BASES = ['A','C','G','T']
 DEFAULT_GC_FRACTION = 0.46
 
-def get_orig_letter(one_hot_vec):
-    try:
-        assert(len(np.where(one_hot_vec!=0)[0]) == 1)
-    except:
-        return 'N'
-    if one_hot_vec[0] != 0:
-        return 'A'
-    elif one_hot_vec[1] != 0:
-        return 'C'
-    elif one_hot_vec[2] != 0:
-        return 'G'
-    elif one_hot_vec[3] != 0:
-        return 'T'
-
-def get_letter_index(letter):
-    if letter == 'A':
-        return 0
-    elif letter == 'C':
-        return 1
-    elif letter == 'G': 
-        return 2
-    elif letter == 'T':
-        return 3
-
-
 def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None, 
                              mutants=BASES, per_base_map=False,
                              mutant_gc_fraction=DEFAULT_GC_FRACTION):
@@ -110,11 +85,12 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                 if per_base_map and mut_end - mut_start == 1:
 
                     # If mutation is a single base
-                    orig_letter  = get_orig_letter(sequences[seq][mut_start, :])
+                    orig_letter  = dfim.util.get_orig_letter(
+                                            sequences[seq][mut_start, :])
                     seq_mutants = [el for el in mutants if el != orig_letter]
                     for mut_letter in seq_mutants:
                         mutated_seq = copy.deepcopy(sequences[seq])
-                        mut_index = get_letter_index(mut_letter)
+                        mut_index = dfim.util.get_letter_index(mut_letter)
                         mutated_seq[mut_start, :] = 0
                         mutated_seq[mut_start, mut_index] = 1
                         mutated_seq_list.append(mutated_seq)
@@ -138,13 +114,13 @@ def generate_mutants_and_key(sequences, mut_loc_dict, sequence_index=None,
                         # Need new names because otherwise they overwrite
                         # new_m = '{0}_base{1}'.format(m, current_mut_start)
                         # Iterate through each base from mut_start to mut_end
-                        orig_letter  = get_orig_letter(
+                        orig_letter  = dfim.util.get_orig_letter(
                                         sequences[seq][current_mut_start, :])
                         seq_mutants = [el for el in mutants if el != orig_letter]
                         current_mut_end = current_mut_start + 1
                         for mut_letter in seq_mutants:
                             mutated_seq = copy.deepcopy(sequences[seq])
-                            mut_index = get_letter_index(mut_letter)
+                            mut_index = dfim.util.get_letter_index(mut_letter)
                             mutated_seq[current_mut_start, :] = 0
                             mutated_seq[current_mut_start, mut_index] = 1
                             mutated_seq_list.append(mutated_seq)
@@ -250,7 +226,7 @@ def compute_importance(model, sequences, tasks,
                        target_layer_idx=-2,
                        reference_gc=0.46,
                        reference_shuffle_type=None,
-                       num_refs_per_seq=3):
+                       num_refs_per_seq=10):
     """
     reference_shuffle_type in ['random', 'dinuc']
     reference_gc = 0 will return numpy array of 0s
@@ -295,10 +271,10 @@ def compute_importance(model, sequences, tasks,
                                                   progress_update=1000))
         else:
             scores = np.array(new_importance_func(task_idx=task,
-                                                   input_data_list=[sequences],
-                                                   batch_size=10,
-                                                   progress_update=1000,
-                                                   input_references_list=[reference]))
+                                                  input_data_list=[sequences],
+                                                  batch_size=10,
+                                                  progress_update=1000,
+                                                  input_references_list=[reference]))
         importance_score_dict[task] = scores * sequences
     return importance_score_dict
 
@@ -334,7 +310,7 @@ def compute_delta_profiles(score_dict, mutated_seq_key,
                 mut_start = mutated_seq_key.loc[mut_i, 'mut_start']
                 mut_end = mutated_seq_key.loc[mut_i, 'mut_end']
                 # orig_letter = mutated_seq_key.loc[mut_i, 'orig_letter']
-                # orig_letter_ind = get_letter_index(orig_letter)
+                # orig_letter_ind = dfim.util.get_letter_index(orig_letter)
                 for r in range(len(resp_starts)):
                     response_mut_profile = score_dict[task][mut_ind][
                                                 resp_starts[r]:resp_ends[r], :]
@@ -449,8 +425,10 @@ def dfim_per_base(dfim_key, resp_size, diagonal_value,
         m = dfim_key.loc[i, 'mut_key']
         label = dfim_key.loc[i, 'label']
         start_ind = np.where(np.array(mut_starts) == dfim_key.loc[i, 'mut_start'])[0][0]
-        orig_letter_ind = get_letter_index(dfim_key.loc[i, 'orig_letter'])
-        mut_letter_ind = get_letter_index(dfim_key.loc[i, 'mut_letter'])
+        orig_letter_ind = dfim.util.get_letter_index(
+                                            dfim_key.loc[i, 'orig_letter'])
+        mut_letter_ind = dfim.util.get_letter_index(
+                                            dfim_key.loc[i, 'mut_letter'])
         if len(delta_dict[task][seq][label].keys()) == 1:
             r = delta_dict[task][seq][label].keys()[0]
         else:

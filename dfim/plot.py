@@ -191,7 +191,7 @@ letters_polygons['T'] = standardize_polygons_str(T_data)
 
 
 colors = dict(zip(
-    'ACGT', (('green', 'white'), ('blue',), ('orange',), ('red',))
+    'ACGT', (('red', 'white'), ('blue',), ('orange',), ('green',))
 ))
 
 
@@ -348,7 +348,7 @@ def plot_delta_tracks(track_list, title_list, x_tick_interval=1,
            raise RuntimeError("Unsure how to deal with shape "+str(arr.shape))
         ax.axhline(0, linestyle='dashed', color='black')
         ax.set_title(title_list[i])
-        ax.set_ylabel('DDL Score')
+        ax.set_ylabel('Importance Score', fontsize=16)
         ax.set_xlim(-1, array.shape[1]+1)
         ax.set_ylim([yMin, yMax])
         if axvline_loc is not None:
@@ -359,10 +359,12 @@ def plot_delta_tracks(track_list, title_list, x_tick_interval=1,
     fig.tight_layout()
     if plot_file is not None:
         plt.savefig(plot_file)
-    plt.show()
+    # plt.show()
+    return plt
 
 
-def plot_dfim(map_array, figsize=(10, 3)):
+def plot_dfim(map_array, figsize=(10, 3),
+              cmap='plasma'):
     """
     Plot map
     """
@@ -371,9 +373,9 @@ def plot_dfim(map_array, figsize=(10, 3)):
     plt.figure(figsize=figsize)
     fig, ax = plt.subplots()
     if map_array.shape[0] == 1:
-        im = ax.imshow(map_array, aspect=10)
+        im = ax.imshow(map_array, aspect=10, cmap=cmap)
     else:
-        im = ax.imshow(map_array, aspect='auto')
+        im = ax.imshow(map_array, aspect='auto', cmap=cmap)
     values = np.unique(map_array.ravel())
     legend_values=[np.min(values), np.mean(values), np.max(values)]
     colors = [ im.cmap(im.norm(value)) for value in legend_values]
@@ -383,7 +385,8 @@ def plot_dfim(map_array, figsize=(10, 3)):
                    for i in range(len(legend_values))]
     plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), 
                loc=2, borderaxespad=0. )
-    plt.show()
+    # plt.show()
+    return plt
 
 
 
