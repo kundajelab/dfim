@@ -10,7 +10,7 @@ Dependencies can be observed between individual bases (i.e. between variants and
 
 DFIM works through creating strategic perturbation of features of interest (or an entire DNA sequence) and using backpropagation-based importance scoring methods to efficiently estimate the effect on the surrounding sequence.
 
-![DFIM_Outline_Figure](/examples/DFIM_description_image.png)
+![DFIM_Outline_Figure](/data/DFIM_description_image.png)
 
 ## Usage
 

@@ -168,7 +168,7 @@ def assign_fit_pval(real_values, null_values):
     mu, std = scipy.stats.norm.fit(null_values)
     print('estimating null distribution with mean %s and std %s'%(mu, std))
 
-    def gaussian_pvalue(val, null_values=null_values, two_sided=False):
+    def gaussian_pvalue(val, null_values=null_values, two_sided=True):
         if two_sided:
             pval = np.min([1 - scipy.stats.norm.cdf(val, mu, std), 
                            scipy.stats.norm.cdf(val, mu, std)])

@@ -15,6 +15,8 @@ import matplotlib.gridspec as grd
 import pybedtools
 from Bio import SeqIO
 
+import itertools
+
 
 def get_orig_letter(one_hot_vec):
     try:
@@ -156,6 +158,54 @@ def process_locations_from_simdata(sequences, simdata_file):
             seqlet_loc_dict[return_key] = return_dict
 
     return seqlet_loc_dict
+
+def process_all_embedding_pairs_from_simdata(sequences, simdata_file):
+    """ 
+    Returns: dictionary with key as:
+        seq_{seq_number}_emb_{embedding_label1};seq_{seq_number}_emb_{embedding_label2}
+        This allows the keys from the mutant_loc_dict to match one of the two in this group
+        and with entry as a dictionary giving
+        the sequence, start, end, and name of each mutation 
+    """
+    simdata_df = pd.read_table(simdata_file, compression='gzip')
+
+    assert simdata_df.shape[0] == sequences.shape[0]
+
+    seqlet_loc_dict = {}
+    for seq_ind in range(sequences.shape[0]):
+
+        if pd.isnull(simdata_df.loc[seq_ind, 'embeddings']):
+            print('No embeddings for seq %s'%seq_ind)
+            continue
+
+        embeddings = simdata_df.loc[seq_ind, 'embeddings'].split(',')
+
+        for (emb1, emb2) in itertools.combinations(embeddings, 2):
+
+            pos_start1 = int(emb1.split('_',1)[0].replace('pos-', ''))
+            pos_end1 = pos_start1 + len(emb1.split('-')[-1])
+            motif1 = emb1.split('_',1)[1].split('-')[0]
+            seq_embed1 = emb1.split('_',1)[1].split('-')[1]
+
+            pos_start2 = int(emb2.split('_',1)[0].replace('pos-', ''))
+            pos_end2 = pos_start2 + len(emb2.split('-')[-1])
+            motif2 = emb2.split('_',1)[1].split('-')[0]
+            seq_embed2 = emb2.split('_',1)[1].split('-')[1]
+
+            return_key = 'seq_%s_emb_%s;seq_%s_emb_%s'%(seq_ind, emb1, seq_ind, emb2)
+
+            return_dict = {'seq': seq_ind,
+                           'mut_starts': [pos_start1, pos_start2],
+                           'mut_ends': [pos_end1, pos_end2],
+                           'mut_names': [motif1, motif2]}
+
+            seqlet_loc_dict[return_key] = return_dict
+
+    return seqlet_loc_dict
+
+### TODO (pgreens): function to genereate ISM mutants from any bases include 'mut_base1', 'mut_base2' as keys
+### TODO (pgreens): function to genereate ISM mutants between base and motif include 'mut_base' as key
+
 
 def load_sequences_from_bed(bed_file=None, 
                             bed=None,
