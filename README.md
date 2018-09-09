@@ -2,13 +2,23 @@
 Deep Feature Interaction Maps (DFIM)   
 Contact: Peyton Greenside (pgreens @ stanford.edu).
 
+Publication: Greenside PG, Shimko T, Fordyce P, Kundaje A. Discovering epistatic feature interactions from neural network models of regulatory DNA sequences
+bioRxiv 302711; doi: https://doi.org/10.1101/302711
+(Accepted to ECCB 2018, To be published in Bioinformatics)
+
+## Abstract
+Motivation: Transcription factors bind regulatory DNA sequences in a combinatorial manner to modulate gene expression. Deep neural networks (DNNs) can learn the cis-regulatory grammars encoded in regulatory DNA sequences associated with transcription factor binding and chromatin accessibility. Several feature attribution methods have been developed for estimating the predictive importance of individual features (nucleotides or motifs) in any input DNA sequence to its associated output prediction from a DNN model. However, these methods do not reveal higher-order feature interactions encoded by the models. 
+Results: We present a new method called Deep Feature Interaction Maps (DFIM) to efficiently estimate interactions between all pairs of features in any input DNA sequence. DFIM accurately identifies ground truth motif interactions embedded in simulated regulatory DNA sequences. DFIM identifies synergistic interactions between GATA1 and TAL1 motifs from in vivo TF binding models. DFIM reveals epistatic interactions involving nucleotides flanking the core motif of the Cbf1 TF in yeast from in vitro TF binding models. We also apply DFIM to regulatory sequence models of in vivo chromatin accessibility to reveal interactions between regulatory genetic variants and proximal motifs of target TFs as validated by TF binding quantitative trait loci. Our approach makes significant strides in improving the interpretability of deep learning models for genomics.
+
 ## Description
 
-This code base enables interpretation of interactions learned by a deep learning model and represents these interactions in a Deep Feature Interaction Map (DFIM). It is designed primarily to identify interactions between sequence elements in regulatory DNA sequence, but can be applied to other modalities.
+### What is an epistatic feature interaction?
+A neural network can learn a complex non-linear mapping from the features in an input instance to its associated output label. If the effect/contribution/importance of one feature on the output of a model depends on another feature, the two features are exhibiting epistatic interactions. These interactions and dependence relationships would manifest as non-additive (non-linear) effects on the output. DFIM is a method for estimating epistatic interaction scores between pairs of features from a trained deep learning model. The interactions are represented using a Deep Feature Interaction Map (DFIM). 
 
-Dependencies can be observed between individual bases (i.e. between variants and each base in the surrounding sequence), between motifs (i.e. between transcription factor binding domains) or between a motif and a set of bases (i.e. effect of mutation on a binding motif). See functions `dfim_per_element`, `dfim_per_base`, and `dfim_element_by_base` in core.py.
+The approach is general and can be applied to any deep neural network and any input data modality. However, the code in this repository was specifically designed to interpret neural network models of regulatory DNA sequence by identifying interactions between sequence features (nucleotides and motifs) in regulatory DNA sequence. The primary motivation is regulatory DNA sequences exhibit widespread cooperative/epistatic binding of multiple regulatory proteins (transcription factors). This cooperative/epistatic binding activity is often mediated by DNA sequence features (motifs). Moreover, nucleotides flanking and within DNA sequence motifs (binding sites) that determine the binding specificity of individual transcription factors also exhibit epistatic interactions. Our goal was to extract these types of epistatic interactions between motifs and/or nucleotides that are potentially learned by neural networks trained to predict transcription factor binding and associated molecular markers (e.g chromatin accessibility) from DNA sequence.
 
-DFIM works through creating strategic perturbation of features of interest (or an entire DNA sequence) and using backpropagation-based importance scoring methods to efficiently estimate the effect on the surrounding sequence.
+To interpret and score feature interactions in any input instance/example, we first create a perturbation of a source feature of interest (e.g. a nucleotide or motif). We then use efficient backpropagation-based importance scoring methods to estimate the effect of perturbing the source feature on the predictive importance of all other features in the surrounding sequence. The change in the importance score of a target feature due a perturbation in a source feature, provides an estimate of a feature interaction score. Interactions can be computed between individual nucleotides, between motifs (contiguous subsequences) or between nucleotides and motifs. (See functions `dfim_per_element`, `dfim_per_base`, and `dfim_element_by_base` in core.py.)
+
 
 ![DFIM_Outline_Figure](/data/DFIM_description_image.png)
 
@@ -49,3 +59,6 @@ Installation can be done with `python setup.py install` or through `pip install 
 
 Requirements: scipy, numpy>=1.11, pandas, deeplift  
 Optional: matplotlib, h5py, biopython
+
+## Datasets and models
+Datasets and models associated with each section of the associated publication are in the data/ directory in this repository
