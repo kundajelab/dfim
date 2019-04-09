@@ -8,7 +8,7 @@ import numpy as np
 import operator
 
 import deeplift
-from deeplift.conversion import keras_conversion as kc
+from deeplift.conversion import kerasapi_conversion as kc
 
 BASES = ['A','C','G','T']
 
